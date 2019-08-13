@@ -1,10 +1,18 @@
 package com.example.lsnr;
 
 import android.Manifest;
+import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
@@ -13,20 +21,28 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewTreeObserver;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        final TextView textView = findViewById(R.id.mainMessage);
+        textView.setText("Press START to listen");
+
 
         // Check for permission to use the microphone.
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -42,12 +58,17 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Log.v("MainActivity", "START CLICKED");
                 if (!Globals.getInstance().getRecording()) {
-                    Snackbar.make(view, "Started recording", Snackbar.LENGTH_SHORT)
-                            .setAction("Action", null).show();
+                    //Snackbar.make(view, "Started recording", Snackbar.LENGTH_SHORT)
+                    //        .setAction("Action", null).show();
+
                     Globals.getInstance().setRecording(true);
-                    recordAudio();
+
+                    TextView textView = findViewById(R.id.mainMessage);
+                    textView.setText("LISTENING");
+
+                    listenAudio();
                 } else {
-                    Snackbar.make(view, "Already recording", Snackbar.LENGTH_SHORT)
+                    Snackbar.make(view, "Already listening", Snackbar.LENGTH_SHORT)
                             .setAction("Action", null).show();
                 }
             }
@@ -60,11 +81,15 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Log.v("MainActivity", "STOP CLICKED");
                 if (Globals.getInstance().getRecording()) {
-                    Snackbar.make(view, "Stopped recording", Snackbar.LENGTH_SHORT)
-                            .setAction("Action", null).show();
+                    //Snackbar.make(view, "Stopped recording", Snackbar.LENGTH_SHORT)
+                    //        .setAction("Action", null).show();
+
                     Globals.getInstance().setRecording(false);
+
+                    TextView textView = findViewById(R.id.mainMessage);
+                    textView.setText("Press START to listen");
                 } else {
-                    Snackbar.make(view, "Already not recording", Snackbar.LENGTH_SHORT)
+                    Snackbar.make(view, "Already not listening", Snackbar.LENGTH_SHORT)
                             .setAction("Action", null).show();
                 }
             }
@@ -73,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Create a thread to record audio. Stop when Globals.recording == false.
-    void recordAudio() {
+    void listenAudio() {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -109,8 +134,12 @@ public class MainActivity extends AppCompatActivity {
                     int numberOfShort = record.read(audioBuffer, 0, audioBuffer.length);
                     shortsRead += numberOfShort;
 
-                    System.out.print(shortsRead + ": ");
-                    printIt(audioBuffer);
+                    //System.out.print(shortsRead + ": ");
+                    //printIt(audioBuffer);
+
+                    WaveView waveView = findViewById(R.id.waveView);
+                    waveView.setAudioBuffer(audioBuffer);
+                    waveView.invalidate();
 
                     //System.out.print(averageIt(audioBuffer) + " ");
                     //System.out.flush();
