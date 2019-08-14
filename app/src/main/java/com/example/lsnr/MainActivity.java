@@ -1,18 +1,10 @@
 package com.example.lsnr;
 
 import android.Manifest;
-import android.annotation.TargetApi;
-import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.drawable.BitmapDrawable;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.Build;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
@@ -21,14 +13,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.ViewTreeObserver;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
@@ -37,12 +26,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Set the toolbar that isn't used for anything yet.
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        // Set the on-screen instructions.
         final TextView textView = findViewById(R.id.mainMessage);
-        textView.setText("Press START to listen");
-
+        textView.setText(getResources().getString(R.string.instructions));
 
         // Check for permission to use the microphone.
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -51,45 +41,42 @@ public class MainActivity extends AppCompatActivity {
                     10);
         }
 
-        // Click button to start recording
+        // Click button to start listening by setting the global "isListening" to true.
         Button startButton = findViewById(R.id.startButton);
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Log.v("MainActivity", "START CLICKED");
-                if (!Globals.getInstance().getRecording()) {
-                    //Snackbar.make(view, "Started recording", Snackbar.LENGTH_SHORT)
-                    //        .setAction("Action", null).show();
-
-                    Globals.getInstance().setRecording(true);
+                if (!Globals.getInstance().getIsListening()) {
+                    Globals.getInstance().setIsListening(true);
 
                     TextView textView = findViewById(R.id.mainMessage);
-                    textView.setText("LISTENING");
+                    textView.setText(getResources().getString(R.string.listening));
 
+                    // Kick off the listening thread.
                     listenAudio();
                 } else {
-                    Snackbar.make(view, "Already listening", Snackbar.LENGTH_SHORT)
+                    Snackbar.make(view, getResources().getString(R.string.already_listening),
+                            Snackbar.LENGTH_SHORT)
                             .setAction("Action", null).show();
                 }
             }
         });
 
-        // Click button to stop recording
+        // Click button to stop listening by setting the global "isListening" to false.
         Button stopButton = findViewById(R.id.stopButton);
         stopButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Log.v("MainActivity", "STOP CLICKED");
-                if (Globals.getInstance().getRecording()) {
-                    //Snackbar.make(view, "Stopped recording", Snackbar.LENGTH_SHORT)
-                    //        .setAction("Action", null).show();
-
-                    Globals.getInstance().setRecording(false);
+                if (Globals.getInstance().getIsListening()) {
+                    Globals.getInstance().setIsListening(false);
 
                     TextView textView = findViewById(R.id.mainMessage);
-                    textView.setText("Press START to listen");
+                    textView.setText(getResources().getString(R.string.instructions));
                 } else {
-                    Snackbar.make(view, "Already not listening", Snackbar.LENGTH_SHORT)
+                    Snackbar.make(view, getResources().getString(R.string.already_not_listening),
+                            Snackbar.LENGTH_SHORT)
                             .setAction("Action", null).show();
                 }
             }
@@ -97,63 +84,67 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    // Create a thread to record audio. Stop when Globals.recording == false.
+    // Create a thread to record audio. Stop when Globals.getIsListening() == false.
     void listenAudio() {
         new Thread(new Runnable() {
             @Override
             public void run() {
 
-                if (!Globals.getInstance().getRecording()) {
-                    Log.v("MainActivity", "STARTED RECORDING THREAD BUT GLOBALS.RECORDING == FALSE");
+                if (!Globals.getInstance().getIsListening()) {
+                    Log.v("MainActivity", "STARTED RECORDING THREAD BUT GLOBALS.RECORDING == FALSE -- WHY???");
                 }
 
-                // Heavily inspired by:
+                // Audio recording method inspired by:
                 // https://www.newventuresoftware.com/blog/record-play-and-visualize-raw-audio-data-in-android
+
+                // Set thread priority to support audio recording
                 android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO);
 
-                // buffer size in bytes
+                // Determine buffer size in bytes
                 int bufferSize = AudioRecord.getMinBufferSize(44100,
                         AudioFormat.CHANNEL_IN_MONO,
                         AudioFormat.ENCODING_PCM_16BIT);
 
                 Log.v("MainActivity", "BUFFER SIZE: " + bufferSize);
 
+                // Allocate audio buffer,
                 short[] audioBuffer = new short[bufferSize / 2];
 
-                AudioRecord record = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
+                // Create audio listener.
+                AudioRecord audioListener = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
                         44100,
                         AudioFormat.CHANNEL_IN_MONO,
                         AudioFormat.ENCODING_PCM_16BIT,
                         bufferSize);
 
-                record.startRecording();
+                // Start listening.
+                audioListener.startRecording();
 
-                long shortsRead = 0;
+                long shortsReadTotal = 0;
 
-                while (Globals.getInstance().getRecording()) {
-                    int numberOfShort = record.read(audioBuffer, 0, audioBuffer.length);
-                    shortsRead += numberOfShort;
+                // Keep listening while global isListening is true.
+                while (Globals.getInstance().getIsListening()) {
 
-                    //System.out.print(shortsRead + ": ");
-                    //printIt(audioBuffer);
+                    // Read into the audio buffer.
+                    int shortsRead = audioListener.read(audioBuffer, 0, audioBuffer.length);
+                    shortsReadTotal += shortsRead;
 
+                    // Send the audio buffer to the wave view and force it to redraw.
                     WaveView waveView = findViewById(R.id.waveView);
                     waveView.setAudioBuffer(audioBuffer);
                     waveView.invalidate();
-
-                    //System.out.print(averageIt(audioBuffer) + " ");
-                    //System.out.flush();
                 }
 
-                record.stop();
-                record.release();
+                // Once the STOP button sets global isListening to false, the while loop ends and we stop listening.
+                audioListener.stop();
+                audioListener.release();
 
-                Log.v("MainActivity", String.format("Recording stopped. Samples read: %d", shortsRead));
+                Log.v("MainActivity", String.format("Recording stopped. Samples read: %d", shortsReadTotal));
             }
         }).start();
     }
 
-    // Print a buffer to the screen.
+    // Print an array of shorts to the screen.
     void printIt(short[] buffer) {
         for (short value : buffer) {
             System.out.print(value + " ");

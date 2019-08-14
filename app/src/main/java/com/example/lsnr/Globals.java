@@ -1,5 +1,6 @@
 package com.example.lsnr;
 
+// Singleton class to hold certain global variables.
 public class Globals {
     private static Globals instance;
 
@@ -12,13 +13,14 @@ public class Globals {
     private Globals() {
     }
 
-    private boolean recording;
+    // Track whether or not we are supposed to be listening; button callbacks set; listening thread gets
+    private boolean isListening;
 
-    public boolean getRecording() {
-        return recording;
+    public boolean getIsListening() {
+        return isListening;
     }
 
-    public void setRecording(boolean recording) {
-        this.recording = recording;
+    public void setIsListening(boolean isListening) {
+        this.isListening = isListening;
     }
 }

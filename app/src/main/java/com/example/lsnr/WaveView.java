@@ -8,6 +8,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
+// View for drawing an audio waveform.
 public class WaveView extends View {
     Paint paint = null;
     protected short[] audioBuffer = null;
@@ -31,10 +32,12 @@ public class WaveView extends View {
         paint = new Paint();
     }
 
+    // Set the audioBuffer to draw for the next onDraw().
     public void setAudioBuffer(short[] audioBuffer) {
         this.audioBuffer = audioBuffer;
     }
 
+    // Draw the audioBuffer that an outside class has set, if it's not null.
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -43,23 +46,33 @@ public class WaveView extends View {
 
         //Log.v("WaveView", "WIDTH: " + width + " HEIGHT: " + height);
 
+        // Clear canvas
         paint.setColor(Color.BLACK);
         canvas.drawPaint(paint);
 
-        // Draw a circle for no real reason
-        int radius;
-        radius = 100;
-        paint.setStyle(Paint.Style.FILL);
-        paint.setColor(Color.parseColor("#CD5C5C"));
-        canvas.drawCircle(width / 2, height / 2, radius, paint);
+        // Draw center line
+        paint.setColor(getResources().getColor(R.color.colorAccent));
+        canvas.drawLine(0, height / 2, (width - 1), height / 2, paint);
 
-        paint.setColor(Color.WHITE);
+        // Determine ratio to scale an audio buffer value to the display area
+        float heightScaleValue = (float) ((height / 2.0) / Short.MAX_VALUE);
+        //Log.v("WaveView", "heightScaleValue: " + heightScaleValue);
 
         if (audioBuffer != null) {
-            //Log.v("WaveView", "DRAW SHORTS: " + audioBuffer.length);
+            //Log.v("WaveView", "audioBuffer length: " + audioBuffer.length);
 
+            // Length of audioBuffer is probably not the same as the width of the canvas,
+            // so determine value to increment audioBuffer index as we iterate across the canvas width.
+            float incrementValue = (float) (audioBuffer.length / width);
+
+            paint.setColor(getResources().getColor(R.color.colorPrimary));
+
+            // For each column of the canvas, draw the audioBuffer value that maps to that column
+            // scaled to fit the height of the canvas.
             for (int i = 0; i < width; i++) {
-                canvas.drawLine(i, height / 2, i, (height / 2) + audioBuffer[i], paint);
+                canvas.drawLine(i, height / 2, i,
+                        (height / 2) + (int) (audioBuffer[(int) (i * incrementValue)] * heightScaleValue),
+                        paint);
             }
         }
     }
