@@ -6,4 +6,4 @@ It's a single-activity app that listens to audio and draws the waveform on the d
 when the user clicks "START" and stops when the user clicks "STOP." It does not save any
 portion of the audio anywhere.
 
-![Screenshot](https://github.com/dennisgbrown/lsnr-android/blob/master/Android%20lsnr%20screenshot.png?raw=true "lsnr Android version")
+![Screenshot](https://github.com/dennisgbrown/lsnr-android/blob/master/Android%20lsnr%20screenshot.jpg?raw=true "lsnr Android version")
